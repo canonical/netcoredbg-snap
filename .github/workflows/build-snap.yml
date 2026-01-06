@@ -1,4 +1,4 @@
-name: Build Snap
+name: Build stable snap
 
 on:
   workflow_dispatch:
@@ -38,19 +38,23 @@ jobs:
         if: steps.version_check.outcome == 'failure' || inputs.force_build == true
         run: |
           sudo apt-get update
-          sudo snap install snapcraft --classic
           sudo apt-get install -y make curl jq
 
-      - name: Build snap
+      - name: Prepare snapcraft.yaml
         if: steps.version_check.outcome == 'failure' || inputs.force_build == true
-        run: make
+        run: make fetch-version generate-snapcraft
+
+      - name: Build snap
+        id: build_snap
+        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        uses: canonical/action-build@v1
 
       - name: Upload snap artifact
         if: steps.version_check.outcome == 'failure' || inputs.force_build == true
         uses: actions/upload-artifact@v4
         with:
           name: netcoredbg-snap
-          path: "*.snap"
+          path: ${{ steps.build_snap.outputs.snap }}
           retention-days: 30
 
       - name: Skip build

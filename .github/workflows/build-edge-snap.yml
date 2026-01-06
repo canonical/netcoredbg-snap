@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.version_check.outcome == 'failure' || inputs.force_build == true }}
+      should_publish: ${{ steps.version_check.outputs.needs_build }}
 
     steps:
       - name: Checkout code
@@ -26,26 +26,31 @@ jobs:
 
       - name: Check if Snap Store edge has latest commit
         id: version_check
-        if: inputs.force_build == false
-        continue-on-error: true
-        run: python3 eng/snap_store_has_latest.py --channel edge
+        run: |
+          if [ "${{ inputs.force_build }}" = "true" ]; then
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          elif python3 eng/snap_store_has_latest.py --channel edge; then
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Fetch latest netcoredbg commit
         id: fetch_version
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         run: |
           LATEST_COMMIT=$(curl -s https://api.github.com/repos/Samsung/netcoredbg/commits/master | jq -r '.sha[:7]')
           echo "commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
           echo "Building from upstream master branch, commit: $LATEST_COMMIT"
 
       - name: Install build dependencies
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y make curl jq
 
       - name: Prepare snapcraft.yaml
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         run: |
           # Use commit SHA as version and build from master branch
           make generate-snapcraft VERSION=${{ steps.fetch_version.outputs.commit }} GRADE=devel
@@ -54,11 +59,11 @@ jobs:
 
       - name: Build snap
         id: build_snap
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         uses: canonical/action-build@v1
 
       - name: Upload snap artifact
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: netcoredbg-edge-snap
@@ -66,7 +71,7 @@ jobs:
           retention-days: 30
 
       - name: Skip build
-        if: steps.version_check.outcome == 'success' && inputs.force_build == false
+        if: steps.version_check.outputs.needs_build == 'false'
         run: echo "Snap Store edge already has the latest commit. Skipping build."
 
   publish:

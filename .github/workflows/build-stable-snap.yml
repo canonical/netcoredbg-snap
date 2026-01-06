@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.version_check.outcome == 'failure' || inputs.force_build == true }}
+      should_publish: ${{ steps.version_check.outputs.needs_build }}
 
     steps:
       - name: Checkout code
@@ -26,27 +26,32 @@ jobs:
 
       - name: Check if Snap Store has latest version
         id: version_check
-        if: inputs.force_build == false
-        continue-on-error: true
-        run: python3 eng/snap_store_has_latest.py --channel stable
+        run: |
+          if [ "${{ inputs.force_build }}" = "true" ]; then
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          elif python3 eng/snap_store_has_latest.py --channel stable; then
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Install build dependencies
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y make curl jq
 
       - name: Prepare snapcraft.yaml
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         run: make fetch-version generate-snapcraft
 
       - name: Build snap
         id: build_snap
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         uses: canonical/action-build@v1
 
       - name: Upload snap artifact
-        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        if: steps.version_check.outputs.needs_build == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: netcoredbg-stable-snap
@@ -54,7 +59,7 @@ jobs:
           retention-days: 30
 
       - name: Skip build
-        if: steps.version_check.outcome == 'success' && inputs.force_build == false
+        if: steps.version_check.outputs.needs_build == 'false'
         run: echo "Snap Store already has the latest version. Skipping build."
 
   publish:

@@ -1,0 +1,77 @@
+name: Build Snap
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even if Snap Store has the latest version'
+        required: false
+        type: boolean
+        default: false
+      publish:
+        description: 'Publish the built snap to the Snap Store'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.version_check.outcome == 'failure' || inputs.force_build == true }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install netcoredbg snap for version check
+        if: inputs.force_build == false
+        run: sudo snap install netcoredbg --classic
+
+      - name: Check if Snap Store has latest version
+        id: version_check
+        if: inputs.force_build == false
+        continue-on-error: true
+        run: python3 eng/snap_store_has_latest.py
+
+      - name: Install build dependencies
+        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        run: |
+          sudo apt-get update
+          sudo snap install snapcraft --classic
+          sudo apt-get install -y make curl jq
+
+      - name: Build snap
+        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        run: make
+
+      - name: Upload snap artifact
+        if: steps.version_check.outcome == 'failure' || inputs.force_build == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: netcoredbg-snap
+          path: "*.snap"
+          retention-days: 30
+
+      - name: Skip build
+        if: steps.version_check.outcome == 'success' && inputs.force_build == false
+        run: echo "Snap Store already has the latest version. Skipping build."
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build
+    if: inputs.publish == true && needs.build.outputs.should_publish == true
+
+    steps:
+      - name: Download snap artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: netcoredbg-snap
+
+      - name: Publish snap to Snap Store
+        uses: canonical/action-publish@v1
+        with:
+          snap: "*.snap"
+          release: stable
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}

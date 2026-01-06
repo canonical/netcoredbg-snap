@@ -24,15 +24,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install netcoredbg snap for version check
-        if: inputs.force_build == false
-        run: sudo snap install netcoredbg --classic
-
       - name: Check if Snap Store has latest version
         id: version_check
         if: inputs.force_build == false
         continue-on-error: true
-        run: python3 eng/snap_store_has_latest.py
+        run: python3 eng/snap_store_has_latest.py --channel stable
 
       - name: Install build dependencies
         if: steps.version_check.outcome == 'failure' || inputs.force_build == true

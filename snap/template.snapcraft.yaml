@@ -1,0 +1,52 @@
+name: netcoredbg
+base: core24
+version: {{VERSION}}
+summary: NetCoreDbg is a managed code debugger for CoreCLR.
+description: |
+  NetCoreDbg is a managed code debugger with GDB/MI, VSCode DAP and CLI
+  interfaces for CoreCLR.
+
+  The NetCoreDbg debugger implements GDB/MI and VSCode Debug Adapter Protocol
+  in a unified framework, allowing the debugging of .NET apps under the .NET Core
+  runtime as well as facilitating debugging from the command line (such as in GDB).
+source-code:
+  - https://github.com/Samsung/netcoredbg
+  - https://github.com/canonical/netcoredbg-snap
+issues:
+  - https://github.com/canonical/netcoredbg-snap/issues/new
+
+grade: {{GRADE}}
+confinement: {{CONFINEMENT}}
+
+parts:
+  netcoredbg:
+    plugin: cmake
+    source: https://github.com/Samsung/netcoredbg
+    source-type: git
+    source-tag: {{VERSION}}
+    cmake-parameters:
+      - -DCORECLR_DIR=${CRAFT_PART_SRC}/src/runtime/src/coreclr
+      - -DDOTNET_DIR=/usr/lib/dotnet
+      - -DINTEROP_DEBUGGING=1
+    build-attributes:
+      - enable-patchelf
+    build-packages:
+      - clang
+      - dotnet-sdk-8.0
+      - jq
+      - libunwind-dev
+    stage-packages:
+      - libunwind8
+    build-environment:
+      - CXX: clang++
+      - CC: clang
+    override-build: |
+      if [ ! -d ${CRAFT_PART_SRC}/src/runtime ]; then
+        git clone --branch release/8.0 --depth 1 https://github.com/dotnet/runtime \
+          ${CRAFT_PART_SRC}/src/runtime
+      fi
+      craftctl default
+
+apps:
+  netcoredbg:
+    command: usr/local/netcoredbg

@@ -29,15 +29,11 @@ parts:
       - -DCORECLR_DIR=${CRAFT_PART_SRC}/src/runtime/src/coreclr
       - -DDOTNET_DIR=/usr/lib/dotnet
       - -DINTEROP_DEBUGGING=1
-    build-attributes:
-      - enable-patchelf
     build-packages:
       - clang
       - dotnet-sdk-8.0
       - jq
       - libunwind-dev
-    stage-packages:
-      - libunwind8
     build-environment:
       - CXX: clang++
       - CC: clang

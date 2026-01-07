@@ -25,6 +25,7 @@ parts:
     source-type: git
     source-tag: {{VERSION}}
     cmake-parameters:
+      - -DCMAKE_BUILD_TYPE={{BUILD_TYPE}}
       - -DCORECLR_DIR=${CRAFT_PART_SRC}/src/runtime/src/coreclr
       - -DDOTNET_DIR=/usr/lib/dotnet
       - -DINTEROP_DEBUGGING=1

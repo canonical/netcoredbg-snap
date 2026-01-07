@@ -4,6 +4,7 @@
 VERSION ?=
 GRADE ?= stable
 CONFINEMENT ?= classic
+BUILD_TYPE ?= Release
 
 # Paths
 SNAP_DIR := snap
@@ -32,11 +33,12 @@ endif
 
 # Generate snapcraft.yaml from template
 generate-snapcraft:
-	@echo "Generating snapcraft.yaml with version $(VERSION), grade $(GRADE), confinement $(CONFINEMENT)..."
+	@echo "Generating snapcraft.yaml with version $(VERSION), grade $(GRADE), confinement $(CONFINEMENT), build type $(BUILD_TYPE)..."
 	@cp $(SNAPCRAFT_TEMPLATE) $(SNAPCRAFT_YAML)
 	@sed -i 's/{{VERSION}}/$(VERSION)/g' $(SNAPCRAFT_YAML)
 	@sed -i 's/{{GRADE}}/$(GRADE)/g' $(SNAPCRAFT_YAML)
 	@sed -i 's/{{CONFINEMENT}}/$(CONFINEMENT)/g' $(SNAPCRAFT_YAML)
+	@sed -i 's/{{BUILD_TYPE}}/$(BUILD_TYPE)/g' $(SNAPCRAFT_YAML)
 	@echo "Generated $(SNAPCRAFT_YAML)"
 
 # Run snapcraft pack
@@ -47,6 +49,7 @@ pack:
 
 # Clean generated files
 clean:
+	snapcraft clean
 	@rm -f $(SNAPCRAFT_YAML)
 	@rm -f *.snap
 	@echo "Cleaned generated files"

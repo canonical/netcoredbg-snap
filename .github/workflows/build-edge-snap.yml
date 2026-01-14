@@ -77,18 +77,29 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: build
-    if: (github.event_name == 'schedule' || inputs.publish == true) && needs.build.outputs.should_publish == 'true'
+    if: inputs.publish == true && needs.build.outputs.should_publish == 'true'
 
     steps:
       - name: Download snap artifact
+        id: download-artifact
         uses: actions/download-artifact@v4
         with:
           name: netcoredbg-edge-snap
 
+      - name: Gather filename
+        id: gather-filename
+        shell: bash
+        env:
+          ARTIFACT_PATH: ${{ steps.download-artifact.outputs.download-path }}
+        run: |
+          ls -la $ARTIFACT_PATH
+          SNAP_FILE_NAME=$(ls ${ARTIFACT_PATH}/*.snap)
+          echo "SNAP_PATH=${SNAP_FILE_NAME}" >> "$GITHUB_OUTPUT"
+
       - name: Publish snap to Snap Store
         uses: canonical/action-publish@v1
         with:
-          snap: "*.snap"
+          snap: ${{ steps.gather-filename.outputs.SNAP_PATH }}
           release: edge
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}

@@ -123,7 +123,7 @@ def main():
 
     if not expected_version:
         print(f"Failed to fetch {version_type}", file=sys.stderr)
-        return 1
+        return 2  # Error code for fetch failures
 
     print(f"{version_type}: {expected_version}")
 
@@ -132,16 +132,16 @@ def main():
 
     if not snap_version:
         print(f"Failed to fetch snap version from {args.channel} channel", file=sys.stderr)
-        return 1
+        return 2  # Error code for fetch failures
 
     print(f"Snap Store {args.channel} version: {snap_version}")
 
     if expected_version == snap_version:
         print(f"✓ Versions match - Snap Store {args.channel} has the latest netcoredbg version")
-        return 0
+        return 0  # Versions match
 
     print(f"✗ Versions differ - Snap Store {args.channel} does NOT have the latest netcoredbg version")
-    return 1
+    return 1  # Versions differ, build needed
 
 
 if __name__ == "__main__":

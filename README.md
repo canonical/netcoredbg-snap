@@ -1,5 +1,7 @@
 # NetCoreDbg Snap
 
+[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/netcoredbg)
+
 This repository contains the snap packaging for [NetCoreDbg](https://github.com/Samsung/netcoredbg), a managed code debugger with GDB/MI, VSCode DAP and CLI interfaces for CoreCLR.
 
 ## Supported Architectures

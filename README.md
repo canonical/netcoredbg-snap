@@ -2,10 +2,21 @@
 
 This repository contains the snap packaging for [NetCoreDbg](https://github.com/Samsung/netcoredbg), a managed code debugger with GDB/MI, VSCode DAP and CLI interfaces for CoreCLR.
 
+## Supported Architectures
+
+This snap supports the following architectures:
+- **amd64** (x86_64)
+- **arm64** (aarch64)
+
 ## Repository Structure
 
 - `snap/` - Snap packaging files
   - `snapcraft.yaml.template` - Template snapcraft YAML file with placeholders for dynamic values
+- `.github/workflows/` - CI/CD automation
+  - `build-stable-snap.yml` - Builds and publishes stable releases for both architectures
+  - `build-edge-snap.yml` - Builds and publishes edge releases from upstream master
+- `eng/` - Engineering scripts
+  - `snap_store_has_latest.py` - Version checking script for Snap Store channels
 - `Makefile` - Build automation for snap packaging
 
 ## Prerequisites
@@ -40,22 +51,23 @@ make VERSION=3.1.3-1062
 
 ### Customize Snap Grade and Confinement
 
-You can also override the snap grade and confinement:
+You can also override the snap grade, confinement, and build type:
 
 ```bash
-make GRADE=devel CONFINEMENT=devmode
+make GRADE=devel CONFINEMENT=devmode BUILD_TYPE=Debug
 ```
 
 **Default values:**
 - `VERSION`: Fetched automatically from GitHub
 - `GRADE`: `stable`
 - `CONFINEMENT`: `classic`
+- `BUILD_TYPE`: `Release`
 
 ### Build Examples
 
 Development build with all options:
 ```bash
-make VERSION=3.2.0-1100 GRADE=devel CONFINEMENT=devmode
+make VERSION=3.2.0-1100 GRADE=devel CONFINEMENT=devmode BUILD_TYPE=Debug
 ```
 
 Production build (uses defaults):
@@ -72,7 +84,10 @@ The build system performs the following steps:
    - `{{VERSION}}` → NetCoreDbg version
    - `{{GRADE}}` → Snap grade (stable/devel)
    - `{{CONFINEMENT}}` → Snap confinement (classic/devmode/strict)
+   - `{{BUILD_TYPE}}` → CMake build type (Release/Debug)
 3. **pack** - Runs `snapcraft pack --verbose` to build the snap package
+
+The generated snapcraft.yaml includes platform definitions for both amd64 and arm64 architectures.
 
 ## Cleaning Generated Files
 

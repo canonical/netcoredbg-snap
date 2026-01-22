@@ -1,6 +1,9 @@
 name: Build edge snap
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       force_build:
@@ -15,10 +18,11 @@ on:
         default: false
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.version_check.outputs.needs_build }}
+      needs_build: ${{ steps.version_check.outputs.needs_build }}
+      commit: ${{ steps.fetch_version.outputs.commit }}
 
     steps:
       - name: Checkout code
@@ -43,63 +47,75 @@ jobs:
           echo "commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
           echo "Building from upstream master branch, commit: $LATEST_COMMIT"
 
+      - name: Skip build
+        if: steps.version_check.outputs.needs_build == 'false'
+        run: echo "Snap Store edge already has the latest commit. Skipping build."
+
+  build:
+    runs-on: ${{ matrix.runner }}
+    needs: check
+    if: needs.check.outputs.needs_build == 'true'
+    strategy:
+      matrix:
+        include:
+          - runner: [self-hosted, large, jammy, X64]
+            arch: amd64
+          - runner: [self-hosted, large, jammy, ARM64]
+            arch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install build dependencies
-        if: steps.version_check.outputs.needs_build == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y make curl jq
 
       - name: Prepare snapcraft.yaml
-        if: steps.version_check.outputs.needs_build == 'true'
         run: |
           # Use commit SHA as version and build from master branch
-          make generate-snapcraft VERSION=${{ steps.fetch_version.outputs.commit }} GRADE=devel
+          make generate-snapcraft VERSION=${{ needs.check.outputs.commit }} GRADE=devel
           # Replace source-tag with source-branch to build from master
           sed -i 's/source-tag: .*/source-branch: master/' snap/snapcraft.yaml
 
       - name: Build snap
         id: build_snap
-        if: steps.version_check.outputs.needs_build == 'true'
         uses: canonical/action-build@v1
 
       - name: Upload snap artifact
-        if: steps.version_check.outputs.needs_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: netcoredbg-edge-snap
+          name: netcoredbg-edge-snap-${{ matrix.arch }}
           path: ${{ steps.build_snap.outputs.snap }}
           retention-days: 30
 
-      - name: Skip build
-        if: steps.version_check.outputs.needs_build == 'false'
-        run: echo "Snap Store edge already has the latest commit. Skipping build."
-
   publish:
     runs-on: ubuntu-latest
-    needs: build
-    if: inputs.publish == true && needs.build.outputs.should_publish == 'true'
+    needs: [check, build]
+    if: inputs.publish == true && needs.check.outputs.needs_build == 'true'
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
 
     steps:
       - name: Download snap artifact
         id: download-artifact
         uses: actions/download-artifact@v4
         with:
-          name: netcoredbg-edge-snap
+          name: netcoredbg-edge-snap-${{ matrix.arch }}
 
       - name: Gather filename
         id: gather-filename
         shell: bash
-        env:
-          ARTIFACT_PATH: ${{ steps.download-artifact.outputs.download-path }}
         run: |
-          ls -la $ARTIFACT_PATH
-          SNAP_FILE_NAME=$(ls ${ARTIFACT_PATH}/*.snap)
-          echo "SNAP_PATH=${SNAP_FILE_NAME}" >> "$GITHUB_OUTPUT"
+          SNAP=$(ls ${{ steps.download-artifact.outputs.download-path }}/*.snap)
+          echo "snap_path=${SNAP}" >> "$GITHUB_OUTPUT"
 
       - name: Publish snap to Snap Store
         uses: canonical/action-publish@v1
         with:
-          snap: ${{ steps.gather-filename.outputs.SNAP_PATH }}
+          snap: ${{ steps.gather-filename.outputs.snap_path }}
           release: edge
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}

@@ -2,10 +2,14 @@
 """
 Check if the Snap Store version matches the latest GitHub version for a given channel.
 Returns EXIT_SUCCESS (0) if versions match, EXIT_FAILURE (1) otherwise.
+
+Optionally reads GITHUB_TOKEN environment variable for authenticated GitHub API access.
+Authentication increases rate limit from 60 to 5,000 requests/hour.
 """
 
 import sys
 import json
+import os
 import urllib.request
 import urllib.error
 import socket
@@ -13,12 +17,16 @@ import http.client
 import argparse
 
 
-def get_github_latest_release():
+def get_github_latest_release(token=None):
     """Fetch the latest release version from GitHub."""
     url = "https://api.github.com/repos/samsung/netcoredbg/releases/latest"
 
     try:
-        with urllib.request.urlopen(url) as response:
+        request = urllib.request.Request(url)
+        if token:
+            request.add_header("Authorization", f"Bearer {token}")
+
+        with urllib.request.urlopen(request) as response:
             data = json.loads(response.read().decode())
             return data.get("tag_name", "").strip()
     except urllib.error.URLError as e:
@@ -26,12 +34,16 @@ def get_github_latest_release():
         return None
 
 
-def get_github_latest_commit():
+def get_github_latest_commit(token=None):
     """Fetch the latest commit SHA from Samsung/netcoredbg master branch."""
     url = "https://api.github.com/repos/Samsung/netcoredbg/commits/master"
 
     try:
-        with urllib.request.urlopen(url) as response:
+        request = urllib.request.Request(url)
+        if token:
+            request.add_header("Authorization", f"Bearer {token}")
+
+        with urllib.request.urlopen(request) as response:
             data = json.loads(response.read().decode())
             # Get short SHA (7 chars) to match snap version format
             return data.get("sha", "")[:7]
@@ -111,14 +123,19 @@ def main():
     )
     args = parser.parse_args()
 
+    # Get GitHub token from environment if available
+    token = os.getenv("GITHUB_TOKEN")
+    auth_mode = "authenticated" if token else "unauthenticated"
+    print(f"Using {auth_mode} GitHub API access")
+
     # Get expected version based on channel
     if args.channel == "stable":
         print("Fetching latest GitHub release version...")
-        expected_version = get_github_latest_release()
+        expected_version = get_github_latest_release(token=token)
         version_type = "GitHub release"
     else:  # edge
         print("Fetching latest upstream master commit SHA...")
-        expected_version = get_github_latest_commit()
+        expected_version = get_github_latest_commit(token=token)
         version_type = "Upstream master SHA"
 
     if not expected_version:

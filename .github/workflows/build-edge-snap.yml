@@ -27,6 +27,8 @@ jobs:
 
       - name: Check if Snap Store edge has latest commit
         id: version_check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ inputs.force_build }}" = "true" ]; then
             echo "needs_build=true" >> $GITHUB_OUTPUT
@@ -46,8 +48,10 @@ jobs:
       - name: Fetch latest netcoredbg commit
         id: fetch_version
         if: steps.version_check.outputs.needs_build == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_COMMIT=$(curl -s https://api.github.com/repos/Samsung/netcoredbg/commits/master | jq -r '.sha[:7]')
+          LATEST_COMMIT=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/Samsung/netcoredbg/commits/master | jq -r '.sha[:7]')
           echo "commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
           echo "Building from upstream master branch, commit: $LATEST_COMMIT"
 

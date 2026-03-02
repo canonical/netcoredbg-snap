@@ -26,6 +26,8 @@ jobs:
 
       - name: Check if Snap Store stable has latest version
         id: version_check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ inputs.force_build }}" = "true" ]; then
             echo "needs_build=true" >> $GITHUB_OUTPUT

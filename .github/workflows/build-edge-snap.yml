@@ -33,8 +33,10 @@ jobs:
           if [ "${{ inputs.force_build }}" = "true" ]; then
             echo "needs_build=true" >> $GITHUB_OUTPUT
           else
+            set +e
             python3 eng/snap_store_has_latest.py --channel edge
             EXIT_CODE=$?
+            set -e
             if [ $EXIT_CODE -eq 0 ]; then
               echo "needs_build=false" >> $GITHUB_OUTPUT
             elif [ $EXIT_CODE -eq 1 ]; then

@@ -1,5 +1,5 @@
 name: netcoredbg
-base: core24
+base: core22
 version: {{VERSION}}
 summary: NetCoreDbg is a managed code debugger for CoreCLR.
 description: |
@@ -18,17 +18,16 @@ issues:
 grade: {{GRADE}}
 confinement: {{CONFINEMENT}}
 
-platforms:
-  amd64:
-    build-on:
-      - amd64
-    build-for:
-      - amd64
-  arm64:
-    build-on:
-      - arm64
-    build-for:
-      - arm64
+package-repositories:
+ - type: apt
+   ppa: dotnet/backports
+   priority: always
+
+architectures:
+  - build-on: [amd64]
+    build-for: [amd64]
+  - build-on: [arm64]
+    build-for: [arm64]
 
 parts:
   netcoredbg:
@@ -43,7 +42,7 @@ parts:
       - -DINTEROP_DEBUGGING=1
     build-packages:
       - clang
-      - dotnet-sdk-8.0
+      - dotnet-sdk-10.0
       - jq
       - libunwind-dev
     build-environment:
@@ -51,7 +50,7 @@ parts:
       - CC: clang
     override-build: |
       if [ ! -d ${CRAFT_PART_SRC}/src/runtime ]; then
-        git clone --branch release/8.0 --depth 1 https://github.com/dotnet/runtime \
+        git clone --branch release/10.0 --depth 1 https://github.com/dotnet/runtime \
           ${CRAFT_PART_SRC}/src/runtime
       fi
       craftctl default

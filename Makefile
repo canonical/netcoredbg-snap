@@ -8,7 +8,7 @@ BUILD_TYPE ?= Release
 
 # Paths
 SNAP_DIR := snap
-SNAPCRAFT_TEMPLATE := $(SNAP_DIR)/template.snapcraft.yaml
+SNAPCRAFT_TEMPLATE := $(SNAP_DIR)/local/template.snapcraft.yaml
 SNAPCRAFT_YAML := $(SNAP_DIR)/snapcraft.yaml
 
 # Phony targets
